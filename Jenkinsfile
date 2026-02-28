@@ -146,13 +146,13 @@ pipeline {
             steps {
                 script {
                     def targetUrl = "https://shop.92.4.77.2.nip.io"
-                    echo "Waiting 2 minutes for ArgoCD to sync the new deployment..."
-                    sleep time: 120, unit: 'SECONDS'
+                    echo "Waiting 30 seconds for ArgoCD to sync the new deployment..."
+                    sleep time: 30, unit: 'SECONDS'
 
                     echo "Initiating OWASP ZAP Dynamic Vulnerability Scan on ${targetUrl}..."
                     sh """
-                        docker run --rm -u root ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
-                        -t ${targetUrl} -I
+                        docker run --rm -u root ghcr.io/zaproxy/zaproxy:stable \
+                        sh -c "mkdir -p /zap/wrk && /zap/zap-baseline.py -t ${targetUrl} -I"
                     """
                 }
             }
