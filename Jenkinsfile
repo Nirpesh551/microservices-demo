@@ -23,27 +23,18 @@ pipeline {
             }
         }
 
-        stage('Infrastructure Security Scan (IaC)') {
+       stage('Infrastructure Security Scan (IaC)') {
             steps {
                 script {
-                    echo "Scanning Helm manifests for misconfigurations..."
+                    echo "Downloading Trivy natively to bypass Docker-in-Docker volume limits..."
                     sh '''
-                        docker run --rm \
-                        -v $(pwd):/workspace \
-                        -w /workspace \
-                        aquasec/trivy config \
-                        --exit-code 0 \
-                        --severity HIGH,CRITICAL ./helm-chart
-                    '''
+                        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b .
 
-                    echo "Scanning Dockerfile for misconfigurations..."
-                    sh '''
-                        docker run --rm \
-                        -v $(pwd):/workspace \
-                        -w /workspace \
-                        aquasec/trivy config \
-                        --exit-code 0 \
-                        --severity HIGH,CRITICAL ./src/frontend/Dockerfile
+                        echo "Scanning Helm Chart..."
+                        ./trivy config --exit-code 0 --severity HIGH,CRITICAL ./helm-chart
+
+                        echo "Scanning Dockerfile..."
+                        ./trivy config --exit-code 0 --severity HIGH,CRITICAL ./src/frontend/Dockerfile
                     '''
                 }
             }
@@ -52,13 +43,9 @@ pipeline {
         stage('Automated Testing (Go)') {
             steps {
                 script {
-                    echo "Gate 1: Running Go Unit Tests..."
+                    echo "Running Go Unit Tests..."
                     sh """
-                        docker run --rm \
-                        -v \$(pwd)/src/frontend:/app \
-                        -w /app \
-                        golang:1.22-alpine \
-                        sh -c "go mod download && go test -v ./..."
+                        tar -cf - -C src/frontend . | docker run --rm -i golang:1.22-alpine sh -c "mkdir /app && cd /app && tar -xf - && go mod download && go test -v ./..."
                     """
                 }
             }
