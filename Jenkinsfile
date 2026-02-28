@@ -40,12 +40,12 @@ pipeline {
             }
         }
 
-        stage('Automated Testing (Go)') {
+       stage('Automated Testing (Go)') {
             steps {
                 script {
                     echo "Running Go Unit Tests..."
                     sh """
-                        tar -cf - -C src/frontend . | docker run --rm -i golang:1.22-alpine sh -c "mkdir /app && cd /app && tar -xf - && go mod download && go test -v ./..."
+                        tar -cf - -C src/frontend . | docker run --rm -i golang:1.25-alpine sh -c "mkdir /app && cd /app && tar -xf - && go mod download && go test -v ./..."
                     """
                 }
             }
