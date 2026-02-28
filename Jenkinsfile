@@ -40,13 +40,19 @@ pipeline {
             }
         }
 
-       stage('Automated Testing (Go)') {
+        stage('Automated Testing (Go)') {
             steps {
                 script {
-                    echo "Running Go Unit Tests..."
-                    sh """
-                        tar -cf - -C src/frontend . | docker run --rm -i golang:1.25-alpine sh -c "mkdir /app && cd /app && tar -xf - && go mod download && go test -v ./..."
-                    """
+                    echo "Running Go Unit Tests natively to capture coverage report..."
+                    sh '''
+                        curl -sL https://go.dev/dl/go1.25.7.linux-amd64.tar.gz | tar -C ./ -xzf -
+                        export PATH=$PATH:$(pwd)/go/bin
+
+                        cd src/frontend
+                        go mod download
+
+                        go test -v -coverprofile=coverage.out ./...
+                    '''
                 }
             }
         }
@@ -54,7 +60,7 @@ pipeline {
         stage('SonarQube Static Analysis') {
             steps {
                 script {
-                    echo "Sending code to SonarQube for static analysis (Bugs, Vulnerabilities, Code Smells)..."
+                    echo "Sending code and coverage data to SonarQube..."
 
                     def scannerHome = tool 'sonar-scanner'
 
@@ -64,7 +70,8 @@ pipeline {
                             -Dsonar.projectKey=online-boutique-frontend \
                             -Dsonar.projectName="Online Boutique Frontend" \
                             -Dsonar.sources=./src/frontend \
-                            -Dsonar.exclusions=**/*_test.go
+                            -Dsonar.exclusions=**/*_test.go \
+                            -Dsonar.go.coverage.reportPaths=./src/frontend/coverage.out
                         """
                     }
                 }
