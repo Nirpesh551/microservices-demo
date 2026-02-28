@@ -145,11 +145,12 @@ pipeline {
         stage('DAST (OWASP ZAP)') {
             steps {
                 script {
-                    def targetUrl = "https://shop.92.4.77.2.nip.io"
-                    echo "Waiting 30 seconds for ArgoCD to sync the new deployment..."
-                    sleep time: 30, unit: 'SECONDS'
+                    def targetUrl = "http://shop.92.4.77.2.nip.io"
 
-                    echo "Initiating OWASP ZAP Dynamic Vulnerability Scan on ${targetUrl}..."
+                    echo "Waiting 60 seconds for ArgoCD and LoadBalancer to be 100% ready..."
+                    sleep time: 60, unit: 'SECONDS'
+
+                    echo "Initiating OWASP ZAP Scan on ${targetUrl}..."
                     sh """
                         docker run --rm -u root ghcr.io/zaproxy/zaproxy:stable \
                         sh -c "mkdir -p /zap/wrk && /zap/zap-baseline.py -t ${targetUrl} -I"
