@@ -20,7 +20,7 @@ pipeline {
         stage('Automated Testing') {
             steps {
                 script {
-                    echo "Gate 1: Running Go Unit Tests..."
+                    echo "Running Go Unit Tests..."
                     sh """
                         docker run --rm \
                         -v \$(pwd)/src/frontend:/app \
@@ -39,6 +39,23 @@ pipeline {
                     echo "Building version: ${GIT_COMMIT_SHORT}"
 
                     sh "docker build -t ${DOCKER_REGISTRY}/${IMAGE_NAME}:${GIT_COMMIT_SHORT} ./src/frontend"
+                }
+            }
+        }
+
+        stage('Security Scanning') {
+            steps {
+                script {
+                    echo "Scanning Docker image for CRITICAL vulnerabilities using Trivy..."
+                    sh """
+                        docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        aquasec/trivy image \
+                        --severity CRITICAL \
+                        --exit-code 1 \
+                        --no-progress \
+                        ${DOCKER_REGISTRY}/${IMAGE_NAME}:${GIT_COMMIT_SHORT}
+                    """
                 }
             }
         }
@@ -62,13 +79,9 @@ pipeline {
                             git config user.email "jenkins-bot@example.com"
                             git config user.name "Jenkins Bot"
 
-                            # Navigate to Helm chart
                             cd helm-chart
-
-                            # Force update the tag in values.yaml
                             sed -i 's|tag: .*|tag: ${GIT_COMMIT_SHORT}|' values.yaml
 
-                            # Commit and Push back to GitHub
                             git add values.yaml
                             git commit -m "Jenkins: Deployed version ${GIT_COMMIT_SHORT}"
                             git push https://${GIT_USER}:${GIT_PASS}@${GITHUB_REPO} HEAD:main
