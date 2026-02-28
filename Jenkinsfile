@@ -1,6 +1,12 @@
 pipeline {
     agent any
 
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '10'))
+    }
+
     environment {
         DOCKER_REGISTRY = 'hahaha555'
         IMAGE_NAME = 'online-boutique-frontend'
@@ -17,10 +23,26 @@ pipeline {
             }
         }
 
-        stage('Automated Testing') {
+        stage('Infrastructure Security Scan (IaC)') {
             steps {
                 script {
-                    echo "Running Go Unit Tests..."
+                    echo "Scanning Dockerfile and Helm manifests for misconfigurations..."
+                    sh '''
+                        docker run --rm \
+                        -v $(pwd):/workspace \
+                        -w /workspace \
+                        aquasec/trivy config \
+                        --exit-code 0 \
+                        --severity HIGH,CRITICAL ./helm-chart ./src/frontend/Dockerfile
+                    '''
+                }
+            }
+        }
+
+        stage('Automated Testing (Go)') {
+            steps {
+                script {
+                    echo "Gate 1: Running Go Unit Tests..."
                     sh """
                         docker run --rm \
                         -v \$(pwd)/src/frontend:/app \
@@ -32,18 +54,37 @@ pipeline {
             }
         }
 
+        stage('SonarQube Static Analysis') {
+            steps {
+                script {
+                    echo "Sending code to SonarQube for static analysis (Bugs, Vulnerabilities, Code Smells)..."
+
+                    def scannerHome = tool 'sonar-scanner'
+
+                    withSonarQubeEnv('SonarQube') {
+                        sh """
+                            ${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=online-boutique-frontend \
+                            -Dsonar.projectName="Online Boutique Frontend" \
+                            -Dsonar.sources=./src/frontend \
+                            -Dsonar.exclusions=**/*_test.go
+                        """
+                    }
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 script {
                     env.GIT_COMMIT_SHORT = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                     echo "Building version: ${GIT_COMMIT_SHORT}"
-
                     sh "docker build -t ${DOCKER_REGISTRY}/${IMAGE_NAME}:${GIT_COMMIT_SHORT} ./src/frontend"
                 }
             }
         }
 
-        stage('Security Scanning') {
+        stage('Container Security Scan') {
             steps {
                 script {
                     echo "Scanning Docker image for CRITICAL vulnerabilities using Trivy..."
@@ -71,7 +112,20 @@ pipeline {
             }
         }
 
-        stage('Update Helm Chart') {
+        stage('Production Approval Gate') {
+            steps {
+                script {
+                    slackSend(color: 'warning', message: "⏳ *WAITING FOR APPROVAL*: Build #${env.BUILD_NUMBER} passed DevSecOps scans.\nVerify and approve deployment here: ${env.BUILD_URL}")
+
+                    timeout(time: 1, unit: 'HOURS') {
+                        input message: "Deploy version ${GIT_COMMIT_SHORT} to Production via GitOps?", ok: 'Approve & Deploy'
+                    }
+                    echo "Approval granted! Proceeding with GitOps deployment..."
+                }
+            }
+        }
+
+        stage('Update Helm Chart (GitOps)') {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: GIT_CREDS_ID, usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
@@ -89,6 +143,35 @@ pipeline {
                     }
                 }
             }
+        }
+
+        stage('DAST (OWASP ZAP)') {
+            steps {
+                script {
+                    def targetUrl = "https://shop.92.4.77.2.nip.io"
+                    echo "Waiting 2 minutes for ArgoCD to sync the new deployment..."
+                    sleep time: 120, unit: 'SECONDS'
+
+                    echo "Initiating OWASP ZAP Dynamic Vulnerability Scan on ${targetUrl}..."
+                    sh """
+                        docker run --rm -u root ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+                        -t ${targetUrl} -I
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Build completed: ${currentBuild.currentResult}"
+            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
+        }
+        success {
+            slackSend(color: 'good', message: "✅ *SUCCESS*: The 'online-boutique-frontend' deployment passed all quality gates and is live! \nLogs: ${env.BUILD_URL}")
+        }
+        failure {
+            slackSend(color: 'danger', message: "❌ *FAILED*: The deployment pipeline broke or was rejected. \nInvestigate here: ${env.BUILD_URL}")
         }
     }
 }
