@@ -17,6 +17,21 @@ pipeline {
             }
         }
 
+        stage('Automated Testing') {
+            steps {
+                script {
+                    echo "Gate 1: Running Go Unit Tests..."
+                    sh """
+                        docker run --rm \
+                        -v \$(pwd)/src/frontend:/app \
+                        -w /app \
+                        golang:1.22-alpine \
+                        sh -c "go mod download && go test -v ./..."
+                    """
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 script {
