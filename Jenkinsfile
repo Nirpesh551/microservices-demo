@@ -26,14 +26,24 @@ pipeline {
         stage('Infrastructure Security Scan (IaC)') {
             steps {
                 script {
-                    echo "Scanning Dockerfile and Helm manifests for misconfigurations..."
+                    echo "Scanning Helm manifests for misconfigurations..."
                     sh '''
                         docker run --rm \
                         -v $(pwd):/workspace \
                         -w /workspace \
                         aquasec/trivy config \
                         --exit-code 0 \
-                        --severity HIGH,CRITICAL ./helm-chart ./src/frontend/Dockerfile
+                        --severity HIGH,CRITICAL ./helm-chart
+                    '''
+
+                    echo "Scanning Dockerfile for misconfigurations..."
+                    sh '''
+                        docker run --rm \
+                        -v $(pwd):/workspace \
+                        -w /workspace \
+                        aquasec/trivy config \
+                        --exit-code 0 \
+                        --severity HIGH,CRITICAL ./src/frontend/Dockerfile
                     '''
                 }
             }
