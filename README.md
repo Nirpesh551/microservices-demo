@@ -35,11 +35,11 @@ The CI/CD pipeline is orchestrated by Jenkins and triggered automatically via Gi
 3. **Containerization & Image Scanning:** Once the code passes, Docker builds the lightweight microservice images. Before pushing them to Docker Hub, Trivy executes a deep-dive vulnerability scan on the compiled OS layers to catch critical CVEs.
 
 **Visual Proof:**
-* [GitHub Repository Source Code](portfolio-images/01-github-repository.png)
-* [Jenkins CI Pipeline Execution](portfolio-images/02-jenkins-pipeline-success.png)
-* [SonarQube Quality Gate Dashboard](portfolio-images/03-sonarqube-dashboard.png)
-* [Docker Hub Artifacts](portfolio-images/04-dockerhub-registry.png)
-* [Trivy Vulnerability Scan Output](portfolio-images/12-trivy-scan.png)
+* ![GitHub Repository Source Code](portfolio-images/01-github-repository.png)
+* ![Jenkins CI Pipeline Execution](portfolio-images/02-jenkins-pipeline-success.png)
+* ![SonarQube Quality Gate Dashboard](portfolio-images/03-sonarqube-dashboard.png)
+* ![Docker Hub Artifacts](portfolio-images/04-dockerhub-registry.png)
+* ![Trivy Vulnerability Scan Output](portfolio-images/12-trivy-scan.png)
 
 ---
 
@@ -51,8 +51,8 @@ To prevent blind automated deployments to production, I engineered a Human-in-th
 3. **ArgoCD Synchronization:** ArgoCD, running natively inside the multi-cloud K3s cluster, continuously monitors the GitHub repo. Upon detecting the new commit, ArgoCD initiates a **Zero-Downtime Rolling Update**, gracefully replacing old pods across both the Azure and Oracle worker nodes.
 
 **Visual Proof:**
-* [Slack Manual Approval Gateway](portfolio-images/05-slack-approval.png)
-* [ArgoCD Healthy Synchronization](portfolio-images/06-argocd-sync.png)
+* ![Slack Manual Approval Gateway](portfolio-images/05-slack-approval.png)
+* ![ArgoCD Healthy Synchronization](portfolio-images/06-argocd-sync.png)
 
 ---
 
@@ -63,9 +63,9 @@ The pipeline verifies the application dynamically in its running state and provi
 2. **Dynamic Application Security Testing (OWASP ZAP):** Once deployed, Jenkins spins up a containerized OWASP ZAP instance attached to the host network. ZAP actively attacks the live production URL to detect runtime vulnerabilities. This was engineered as a *non-blocking* step with a fail-safe echo to prevent temporary cloud network timeouts from failing a healthy deployment.
 
 **Visual Proof:**
-* [Live Microservices Application](portfolio-images/07-live-boutique.png)
-* [Grafana Compute Monitoring Dashboard](portfolio-images/08-grafana-monitoring.png)
-* [OWASP ZAP Execution Logs](portfolio-images/09-owasp-zap-dast.png)
+* ![Live Microservices Application](portfolio-images/07-live-boutique.png)
+* ![Grafana Compute Monitoring Dashboard](portfolio-images/08-grafana-monitoring.png)
+* ![OWASP ZAP Execution Logs](portfolio-images/09-owasp-zap-dast.png)
 
 ---
 
@@ -78,8 +78,8 @@ To ensure business continuity against catastrophic failures, I engineered an in-
 4. **The Resurrection:** I executed a `velero restore` command. Velero reached into the MinIO vault and successfully resurrected the entire 10-tier microservice architecture across the multi-cloud worker nodes in under 60 seconds.
 
 **Visual Proof:**
-* [Velero Vault Status & Nightly Cron Schedule](portfolio-images/10-velero-vault-ready.png)
-* [Clean Cluster Restoration Post-Chaos Test](portfolio-images/11-kubernetes-running.png)
+* ![Velero Vault Status & Nightly Cron Schedule](portfolio-images/10-velero-vault-ready.png)
+* ![Clean Cluster Restoration Post-Chaos Test](portfolio-images/11-kubernetes-running.png)
 
 ---
 
